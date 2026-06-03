@@ -73,6 +73,8 @@ TypeScript syntax checks. Update snapshots with `mise run test_update`.
 ```bash
 npm login
 mise run publish --tag latest
+# if your npm account enforces publish 2FA:
+mise run publish --tag latest --otp <one-time-code>
 ```
 
 ## License
