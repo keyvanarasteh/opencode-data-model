@@ -1,5 +1,55 @@
 # AGENTS.md
 
+## Installation & Usage
+
+This plugin (`opencode-data-model`) is published to npm and can be loaded by
+OpenCode in two ways.
+
+### From npm (recommended)
+
+Add the package to the `plugin` array in your OpenCode config. npm plugins are
+installed automatically with Bun at startup and cached under
+`~/.cache/opencode/node_modules/`.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-data-model"]
+}
+```
+
+Both regular and scoped npm packages are supported. The same artifact resolves
+under npm or Bun (`bun add opencode-data-model`) — npmjs.com is the only
+registry; there is no separate Bun registry.
+
+### From local files
+
+Place built JavaScript/TypeScript files in a plugin directory; they load
+automatically at startup:
+
+- `.opencode/plugins/` — project-level plugins
+- `~/.config/opencode/plugins/` — global plugins
+
+```bash
+mise run build
+mise run link   # symlinks dist/index.js into ~/.config/opencode/plugins/
+```
+
+To use external packages from a local plugin, create a `package.json` in your
+config directory, or publish to npm and reference it from config instead.
+
+### Load order
+
+Plugins load from all sources and every hook runs in sequence:
+
+1. Global config (`~/.config/opencode/opencode.json`)
+2. Project config (`opencode.json`)
+3. Global plugin directory (`~/.config/opencode/plugins/`)
+4. Project plugin directory (`.opencode/plugins/`)
+
+Duplicate npm packages with the same name and version load once. A local plugin
+and an npm plugin with similar names load separately.
+
 ## Build & Test Commands
 
 - **Build**: `mise run build`

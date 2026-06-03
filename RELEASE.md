@@ -2,8 +2,8 @@
 
 This project uses Release Please for automated releases.
 
-> [!WARN]
-> Before doing anything, ensure that you've setup [Trusted Publishing](#npm-trusted-publishing).
+> [!WARNING]
+> Before doing anything, ensure the [`NPM_TOKEN` secret](#npm-token-authentication) is configured in the repository.
 
 ## Release Workflow
 
@@ -126,52 +126,50 @@ Available markers:
 
 Releases are automatically published to NPM when the Release Please PR is merged.
 
-### NPM Trusted Publishing
+### NPM Token Authentication
 
-This project uses [NPM Trusted Publishing](https://docs.npmjs.com/trusted-publishers) with GitHub Actions. No npm tokens are needed - authentication is handled automatically via OIDC (OpenID Connect).
+Publishing authenticates to npm with an [access token](https://docs.npmjs.com/about-access-tokens) stored as the `NPM_TOKEN` repository secret. The [`publish.yml`](.github/workflows/publish.yml) workflow writes it to `~/.npmrc` before running `npm publish`.
 
 **How it works:**
 
-- Each publish uses short-lived, cryptographically-signed tokens specific to your workflow
-- Tokens cannot be extracted or reused
-- No need to manage or rotate long-lived credentials
-- Automatic provenance attestations prove where and how your package was built
+- The `publish` job authenticates with `secrets.NPM_TOKEN` (no interactive 2FA prompt).
+- `id-token: write` is still granted so npm can attach **provenance attestations** proving where and how the package was built.
+- Publishing is triggered automatically by Release Please via `repository_dispatch`, or manually via the workflow's `workflow_dispatch` input.
 
-**Setup required:**
+**Setup required (one-time):**
 
-1. Go to your npm package settings on npmjs.com
-2. Add a trusted publisher for GitHub Actions with:
-   - **Organization or user**: Your GitHub username/org
-   - **Repository**: Your repository name
-   - **Workflow filename**: `publish.yml` (the release workflow filename)
-3. Optionally, [restrict token access](https://docs.npmjs.com/trusted-publishers#recommended-restrict-token-access-when-using-trusted-publishers) for maximum security
+1. On npmjs.com, create an **Automation** access token (Automation tokens bypass publish 2FA, which CI requires). A **Granular** token with publish access and "bypass 2FA" enabled, scoped to this package, also works.
+2. Store it as a repository secret:
+
+   ```bash
+   gh secret set NPM_TOKEN --body "<your-npm-token>"
+   ```
+
+3. In **Settings → Actions → General → Workflow permissions**, ensure:
+   - **Read and write permissions** is selected (Release Please needs it to push the version/changelog commit and create the release).
+   - **Allow GitHub Actions to create and approve pull requests** is enabled (Release Please opens the release PR).
+
+> [!IMPORTANT]
+> Treat `NPM_TOKEN` as a long-lived credential: rotate it periodically, and immediately if it is ever exposed. Regenerate on npmjs.com, then re-run `gh secret set NPM_TOKEN`.
 
 When you merge a release PR, the GitHub Actions workflow will automatically:
 
 1. Build the plugin
-2. Publish to NPM with OIDC authentication
-3. Generate and attach provenance attestations
+2. Authenticate to npm with `NPM_TOKEN`
+3. Publish to npm and attach provenance attestations
 4. Create a GitHub release
 
-### Manual Releases
+### Manual Publishing
 
-You can also manually trigger a release by pushing a tag in the format `v{semver}`:
+You can trigger a publish on demand from the **Actions** tab using the **Publish Package** workflow's `workflow_dispatch` input (choose the `latest` or `next` tag). This uses the same `NPM_TOKEN` authentication as the automated flow.
+
+For ad-hoc local publishing (testing only), use the mise task — it disables provenance outside CI and supports OTP:
 
 ```bash
-git tag v1.2.3
-git push origin v1.2.3
+npm login
+mise run publish --tag latest
+# if your npm account enforces publish 2FA:
+mise run publish --tag latest --otp <one-time-code>
 ```
 
-This will:
-
-1. Trigger the release workflow
-2. Build and publish to NPM using trusted publishing
-3. Create a GitHub release
-
-Use manual releases for:
-
-- Hot-fixes outside the normal release cycle
-- Bypassing Release Please when needed
-- Direct version control over releases
-
-**Learn more:** See the [NPM Trusted Publishing documentation](https://docs.npmjs.com/trusted-publishers) for complete setup and best practices.
+Prefer the automated Release Please flow for real releases so versioning, the changelog, and the GitHub release stay consistent.

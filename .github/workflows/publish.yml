@@ -38,10 +38,15 @@ jobs:
       - name: Build
         run: mise run build
 
+      - name: Configure npm authentication
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - id: inputs
         uses: simenandre/setup-inputs@v1
 
-      - name: Publish to npm with OIDC
+      - name: Publish to npm
         run: |
           TAG="${{ steps.inputs.outputs.tag }}"
           if [ -z "$TAG" ]; then
@@ -50,3 +55,5 @@ jobs:
 
           echo "Publishing with tag: $TAG"
           mise run publish --tag "$TAG"
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
