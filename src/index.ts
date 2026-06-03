@@ -171,7 +171,17 @@ const commands: CommandDefinition[] = [
     template: commandTemplate('complete'),
   },
   {
+    name: 'model',
+    description: 'Generate complete data model documentation from the current context',
+    template: commandTemplate('complete'),
+  },
+  {
     name: 'data-model-mysql',
+    description: 'Generate a normalized MySQL schema from the current context',
+    template: commandTemplate('mysql'),
+  },
+  {
+    name: 'schema-mysql',
     description: 'Generate a normalized MySQL schema from the current context',
     template: commandTemplate('mysql'),
   },
@@ -181,12 +191,27 @@ const commands: CommandDefinition[] = [
     template: commandTemplate('postgresql'),
   },
   {
+    name: 'schema-pg',
+    description: 'Generate a normalized PostgreSQL schema from the current context',
+    template: commandTemplate('postgresql'),
+  },
+  {
     name: 'data-model-typescript',
     description: 'Generate TypeScript interfaces and types from the current context',
     template: commandTemplate('typescript'),
   },
   {
+    name: 'types-ts',
+    description: 'Generate TypeScript interfaces and types from the current context',
+    template: commandTemplate('typescript'),
+  },
+  {
     name: 'data-model-javascript',
+    description: 'Generate JavaScript object shapes and JSDoc types from the current context',
+    template: commandTemplate('javascript'),
+  },
+  {
+    name: 'types-js',
     description: 'Generate JavaScript object shapes and JSDoc types from the current context',
     template: commandTemplate('javascript'),
   },
@@ -197,6 +222,11 @@ const commands: CommandDefinition[] = [
   },
   {
     name: 'data-model-validate',
+    description: 'Validate a generated data model artifact against required quality gates',
+    template: validationTemplate(),
+  },
+  {
+    name: 'model-check',
     description: 'Validate a generated data model artifact against required quality gates',
     template: validationTemplate(),
   },
@@ -214,6 +244,9 @@ then produce the final artifact directly in the response.
 
 Quality bar:
 ${rubric}
+
+System prompt core:
+${systemPromptCore(target)}
 
 Required response structure:
 1. Assumptions and open questions
@@ -272,8 +305,35 @@ Use the validate_data_model_output tool when available. Report pass/fail status 
 - Review checklist
 
 If the user asks for an AI double-check, run a second independent reviewer pass after
-the structural validation and list any remaining risks.
+the structural validation. Be skeptical: search for hallucinated fields, missing
+relationships, invalid SQL, weak indexes, nullable mistakes, and type/interface drift.
 `.trim();
+}
+
+function systemPromptCore(target: GenerationTarget): string {
+  const shared = `
+- Act as a principal data architect, not a text generator.
+- Preserve domain language, but normalize structure and naming.
+- Design the write model first, then document read-model exceptions.
+- Optimize for correctness, query performance, maintainability, and migration safety.
+- Every table, type, DTO, prop, and state field needs a reason to exist.
+- Do not finalize until validation and the reviewer pass have no material failures.
+`.trim();
+
+  const targetSpecific: Record<GenerationTarget, string> = {
+    complete:
+      '- Trace each concept through database schema, service DTO/domain model, and UI state.',
+    mysql:
+      '- Produce MySQL 8 DDL with InnoDB, utf8mb4, normalized relations, explicit indexes, and clear ON DELETE behavior.',
+    postgresql:
+      '- Produce PostgreSQL DDL with strong constraints, useful indexes, safe enum/jsonb choices, and extension notes.',
+    typescript:
+      '- Produce compile-clean TypeScript with explicit nullability, branded IDs when useful, DTO boundaries, and UI-facing types.',
+    javascript:
+      '- Produce plain JavaScript shapes with precise JSDoc typedefs, required/optional fields, and migration-friendly examples.',
+  };
+
+  return `${shared}\n${targetSpecific[target]}`;
 }
 
 function buildGenerationBrief(options: GenerationBriefOptions): string {
@@ -304,12 +364,16 @@ ${options.context.trim()}
 
 ${rubric}
 
+## System Prompt Core
+
+${systemPromptCore(options.target)}
+
 ## Required Work
 
 1. Identify actors, entities, value objects, lifecycle states, and business events.
 2. Infer relationships, cardinality, ownership, invariants, and deletion behavior.
 3. Separate canonical write models from read models, DTOs, and UI view state.
-4. Generate the requested artifact with explicit assumptions.
+4. Generate normalized, high-performance schemas, types, interfaces, and mappings.
 5. Include validation rules, indexes, constraints, naming notes, and review checks.
 
 ## Output Rules
@@ -319,6 +383,8 @@ ${rubric}
 - Use deterministic, consistent names.
 - Flag ambiguity instead of silently choosing risky semantics.
 - Keep explanations concise and implementation-oriented.
+- For SQL, include access-pattern-aware indexes without over-indexing.
+- For TypeScript or JavaScript, keep generated types compile-safe and UI/API boundaries explicit.
 
 ## Validation Gate
 
@@ -375,7 +441,7 @@ function validationGateText(
     .map((check) => `- ${check.label}`)
     .join('\n');
   const aiReview = aiDoubleCheck
-    ? 'AI double-check: enabled. After the structural pass, run a second independent reviewer pass and list residual risks.'
+    ? 'AI double-check: enabled. After the structural pass, run a second independent reviewer pass. Reject the draft if it has hallucinated fields, missing relationships, weak indexes, nullable mistakes, dialect errors, or type/interface drift.'
     : 'AI double-check: optional. Run it when the user asks for double-checking or when ambiguity remains.';
 
   return `
@@ -491,77 +557,92 @@ function generationArgs() {
 }
 
 export const DataModelCommandPlugin: Plugin = async () => {
+  const modelDocTool = tool({
+    description:
+      'Forge a validated contract for complete DB, service, and UI data model documentation.',
+    args: generationArgs(),
+    async execute(args) {
+      return buildGenerationBrief({ ...args, target: 'complete' });
+    },
+  });
+  const mysqlTool = tool({
+    description: 'Forge a normalized, high-performance MySQL schema contract.',
+    args: generationArgs(),
+    async execute(args) {
+      return buildGenerationBrief({ ...args, target: 'mysql' });
+    },
+  });
+  const postgresTool = tool({
+    description: 'Forge a normalized, high-performance PostgreSQL schema contract.',
+    args: generationArgs(),
+    async execute(args) {
+      return buildGenerationBrief({ ...args, target: 'postgresql' });
+    },
+  });
+  const typescriptTool = tool({
+    description: 'Forge compile-safe TypeScript interfaces, DTOs, and UI data types.',
+    args: generationArgs(),
+    async execute(args) {
+      return buildGenerationBrief({ ...args, target: 'typescript' });
+    },
+  });
+  const javascriptTool = tool({
+    description: 'Forge JavaScript object shapes with precise JSDoc typedefs.',
+    args: generationArgs(),
+    async execute(args) {
+      return buildGenerationBrief({ ...args, target: 'javascript' });
+    },
+  });
+  const roadmapTool = tool({
+    description: 'Map a quality roadmap for improving a data model generator plugin.',
+    args: {
+      context: tool.schema
+        .string()
+        .min(1)
+        .describe('Current goals, constraints, or product notes.'),
+      projectName: tool.schema.string().optional().describe('Optional project or plugin name.'),
+    },
+    async execute(args) {
+      return buildRoadmapBrief(args.context, args.projectName);
+    },
+  });
+  const validationTool = tool({
+    description:
+      'Audit a generated data model artifact for required sections, relationships, constraints, and target-specific signals.',
+    args: {
+      artifact: tool.schema
+        .string()
+        .min(1)
+        .describe('Generated markdown, SQL, TypeScript, or JavaScript artifact to validate.'),
+      target: tool.schema
+        .enum(generationTargetValues)
+        .describe('Artifact target to validate against.'),
+      aiDoubleCheck: tool.schema
+        .boolean()
+        .optional()
+        .describe('Include a second-pass AI reviewer requirement in the validation report.'),
+    },
+    async execute(args) {
+      return formatValidationReport(validateDataModelArtifact(args));
+    },
+  });
+
   return {
     tool: {
-      generate_data_model_documentation: tool({
-        description:
-          'Build a generation contract for complete data model documentation across DB, service, and UI layers.',
-        args: generationArgs(),
-        async execute(args) {
-          return buildGenerationBrief({ ...args, target: 'complete' });
-        },
-      }),
-      generate_mysql_schema: tool({
-        description: 'Build a generation contract for a normalized MySQL schema.',
-        args: generationArgs(),
-        async execute(args) {
-          return buildGenerationBrief({ ...args, target: 'mysql' });
-        },
-      }),
-      generate_postgresql_schema: tool({
-        description: 'Build a generation contract for a normalized PostgreSQL schema.',
-        args: generationArgs(),
-        async execute(args) {
-          return buildGenerationBrief({ ...args, target: 'postgresql' });
-        },
-      }),
-      generate_typescript_types: tool({
-        description: 'Build a generation contract for TypeScript interfaces and types.',
-        args: generationArgs(),
-        async execute(args) {
-          return buildGenerationBrief({ ...args, target: 'typescript' });
-        },
-      }),
-      generate_javascript_types: tool({
-        description: 'Build a generation contract for JavaScript object shapes and JSDoc typedefs.',
-        args: generationArgs(),
-        async execute(args) {
-          return buildGenerationBrief({ ...args, target: 'javascript' });
-        },
-      }),
-      create_data_model_roadmap: tool({
-        description: 'Build a roadmap contract for improving a data model generator plugin.',
-        args: {
-          context: tool.schema
-            .string()
-            .min(1)
-            .describe('Current goals, constraints, or product notes.'),
-          projectName: tool.schema.string().optional().describe('Optional project or plugin name.'),
-        },
-        async execute(args) {
-          return buildRoadmapBrief(args.context, args.projectName);
-        },
-      }),
-      validate_data_model_output: tool({
-        description:
-          'Validate a generated data model artifact for required sections, relationships, constraints, and target-specific signals.',
-        args: {
-          artifact: tool.schema
-            .string()
-            .min(1)
-            .describe('Generated markdown, SQL, TypeScript, or JavaScript artifact to validate.'),
-          target: tool.schema
-            .enum(generationTargetValues)
-            .describe('Artifact target to validate against.'),
-          aiDoubleCheck: tool.schema
-            .boolean()
-            .optional()
-            .describe('Include a second-pass AI reviewer requirement in the validation report.'),
-        },
-        async execute(args) {
-          return formatValidationReport(validateDataModelArtifact(args));
-        },
-      }),
+      model_doc: modelDocTool,
+      schema_mysql: mysqlTool,
+      schema_pg: postgresTool,
+      types_ts: typescriptTool,
+      types_js: javascriptTool,
+      roadmap_model: roadmapTool,
+      audit_model: validationTool,
+      generate_data_model_documentation: modelDocTool,
+      generate_mysql_schema: mysqlTool,
+      generate_postgresql_schema: postgresTool,
+      generate_typescript_types: typescriptTool,
+      generate_javascript_types: javascriptTool,
+      create_data_model_roadmap: roadmapTool,
+      validate_data_model_output: validationTool,
     },
     async config(config) {
       config.command = config.command ?? {};

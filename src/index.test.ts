@@ -134,14 +134,20 @@ describe('DataModelCommandPlugin', () => {
     expect(config.command?.['data-model-typescript']?.description).toContain('TypeScript');
     expect(config.command?.['data-model-javascript']?.description).toContain('JavaScript');
     expect(config.command?.['data-model-validate']?.description).toContain('Validate');
+    expect(config.command?.model?.description).toContain('complete data model');
+    expect(config.command?.['schema-mysql']?.description).toContain('MySQL');
+    expect(config.command?.['schema-pg']?.description).toContain('PostgreSQL');
+    expect(config.command?.['types-ts']?.description).toContain('TypeScript');
+    expect(config.command?.['types-js']?.description).toContain('JavaScript');
+    expect(config.command?.['model-check']?.description).toContain('Validate');
   });
 
   it('snapshots a TypeScript generation contract with forced validation and AI review', async () => {
     const hooks = await DataModelCommandPlugin(pluginInput);
-    const typescriptTool = hooks.tool?.generate_typescript_types;
+    const typescriptTool = hooks.tool?.types_ts;
 
     if (!typescriptTool) {
-      throw new Error('generate_typescript_types tool was not registered');
+      throw new Error('types_ts tool was not registered');
     }
 
     const output = await typescriptTool.execute(
@@ -199,10 +205,10 @@ describe('DataModelCommandPlugin', () => {
 
   it('exposes a validation tool report', async () => {
     const hooks = await DataModelCommandPlugin(pluginInput);
-    const validationTool = hooks.tool?.validate_data_model_output;
+    const validationTool = hooks.tool?.audit_model;
 
     if (!validationTool) {
-      throw new Error('validate_data_model_output tool was not registered');
+      throw new Error('audit_model tool was not registered');
     }
 
     const output = await validationTool.execute(

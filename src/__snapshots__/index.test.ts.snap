@@ -20,12 +20,22 @@ Users create projects and assign owner permissions.
 - Represent nullability, optionality, readonly fields, dates, decimals, and enums explicitly.
 - Add concise mapping notes between generated types and database/service concepts.
 
+## System Prompt Core
+
+- Act as a principal data architect, not a text generator.
+- Preserve domain language, but normalize structure and naming.
+- Design the write model first, then document read-model exceptions.
+- Optimize for correctness, query performance, maintainability, and migration safety.
+- Every table, type, DTO, prop, and state field needs a reason to exist.
+- Do not finalize until validation and the reviewer pass have no material failures.
+- Produce compile-clean TypeScript with explicit nullability, branded IDs when useful, DTO boundaries, and UI-facing types.
+
 ## Required Work
 
 1. Identify actors, entities, value objects, lifecycle states, and business events.
 2. Infer relationships, cardinality, ownership, invariants, and deletion behavior.
 3. Separate canonical write models from read models, DTOs, and UI view state.
-4. Generate the requested artifact with explicit assumptions.
+4. Generate normalized, high-performance schemas, types, interfaces, and mappings.
 5. Include validation rules, indexes, constraints, naming notes, and review checks.
 
 ## Output Rules
@@ -35,6 +45,8 @@ Users create projects and assign owner permissions.
 - Use deterministic, consistent names.
 - Flag ambiguity instead of silently choosing risky semantics.
 - Keep explanations concise and implementation-oriented.
+- For SQL, include access-pattern-aware indexes without over-indexing.
+- For TypeScript or JavaScript, keep generated types compile-safe and UI/API boundaries explicit.
 
 ## Validation Gate
 
@@ -52,5 +64,5 @@ Target-specific checks:
 - Type declarations
 - DTO or view model boundary
 
-AI double-check: enabled. After the structural pass, run a second independent reviewer pass and list residual risks."
+AI double-check: enabled. After the structural pass, run a second independent reviewer pass. Reject the draft if it has hallucinated fields, missing relationships, weak indexes, nullable mistakes, dialect errors, or type/interface drift."
 `;

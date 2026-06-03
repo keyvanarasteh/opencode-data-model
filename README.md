@@ -6,8 +6,16 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/github/stars/keyvanarasteh/opencode-data-model?style=flat)](https://github.com/keyvanarasteh/opencode-data-model)
 
-OpenCode plugin for generating data model documentation, normalized database
-schemas, and TypeScript or JavaScript model definitions from project context.
+OpenCode plugin for generating normalized, high-performance schemas and
+compile-safe TypeScript or JavaScript data models.
+
+## Why
+
+I asked LLMs to generate schemas a million times. Too often they looked right,
+then failed on relationships, constraints, nullability, indexes, SQL dialects, or
+TypeScript boundaries. This plugin adds a stronger prompt contract, forced
+validation, and optional AI double-checking to reduce those mistakes before the
+model reaches your codebase.
 
 ## Install
 
@@ -18,27 +26,31 @@ schemas, and TypeScript or JavaScript model definitions from project context.
 }
 ```
 
-## Commands
+## Objects
 
-| Command | Output |
-| --- | --- |
-| `/data-model` | Complete database, service, and UI data model documentation |
-| `/data-model-mysql` | Normalized MySQL 8 schema |
-| `/data-model-postgresql` | Normalized PostgreSQL schema |
-| `/data-model-typescript` | TypeScript interfaces, DTOs, and UI data structures |
-| `/data-model-javascript` | JavaScript object shapes with JSDoc typedefs |
-| `/data-model-roadmap` | Data model generator implementation roadmap |
-| `/data-model-validate` | Forced validation report with optional AI double-check |
+| Object | Command | Tool |
+| --- | --- | --- |
+| Blueprint | `/model` | `model_doc` |
+| MySQL Forge | `/schema-mysql` | `schema_mysql` |
+| Postgres Forge | `/schema-pg` | `schema_pg` |
+| Type Loom | `/types-ts` | `types_ts` |
+| JSDoc Loom | `/types-js` | `types_js` |
+| Quality Map | `/data-model-roadmap` | `roadmap_model` |
+| Gatekeeper | `/model-check` | `audit_model` |
 
-## Tools
+Classic `/data-model-*` commands and `generate_*` tool names are still available
+for compatibility.
 
-- `generate_data_model_documentation`
-- `generate_mysql_schema`
-- `generate_postgresql_schema`
-- `generate_typescript_types`
-- `generate_javascript_types`
-- `create_data_model_roadmap`
-- `validate_data_model_output`
+## Prompt Contract
+
+- Act as a principal data architect.
+- Normalize write models first; document read-model exceptions.
+- Design for correctness, query performance, maintainability, and migrations.
+- Add indexes for real access patterns without over-indexing.
+- Make nullability, ownership, deletion behavior, and constraints explicit.
+- Keep TypeScript and JavaScript models compile-safe and boundary-aware.
+- Reject the draft if validation finds hallucinated fields, missing relations,
+  weak indexes, dialect errors, or type/interface drift.
 
 ## Development
 
@@ -51,14 +63,8 @@ mise run test
 mise run typecheck
 ```
 
-Validation uses Bun snapshots, Zod contract checks, SQL DDL parsing, and TypeScript
-syntax checks. Update snapshots with `mise run test:update`.
-
-Local OpenCode link:
-
-```bash
-mise run link
-```
+Validation uses Bun snapshots, Zod contract checks, SQL DDL parsing, and
+TypeScript syntax checks. Update snapshots with `mise run test_update`.
 
 ## Publishing
 
@@ -66,12 +72,6 @@ mise run link
 npm login
 mise run publish --tag latest
 ```
-
-## Contributing
-
-Contributions are welcome. Fork the repository, create a feature branch, commit
-your changes, push the branch, and open a pull request. Please update tests as
-appropriate and follow the existing code style.
 
 ## License
 
