@@ -1,6 +1,6 @@
 {
   "name": "opencode-data-model",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "OpenCode plugin for generating data model documentation, database schemas, and TypeScript or JavaScript models",
   "author": {
     "name": "Keyvan Arasteh",

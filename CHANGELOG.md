@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases are managed automatically by [Release Please](https://github.com/googleapis/release-please).
 
+## 1.0.0 (2026-06-03)
+
+
+### Features
+
+* add validation gate and ai double check ([a1a3251](https://github.com/keyvanarasteh/opencode-data-model/commit/a1a3251efc278b2a592a7bcccd6c1166240cd598))
+* implement opencode data model plugin ([98c5a41](https://github.com/keyvanarasteh/opencode-data-model/commit/98c5a41712a1d67f9389125367ac62b61efa02ce))
+
+
+### Bug Fixes
+
+* load project commands from .opencode/commands ([4148257](https://github.com/keyvanarasteh/opencode-data-model/commit/414825796d74b487d7f38064f512eef9a7b4cc1e))
+
 ## [0.1.0] - 2026-06-03
 
 Initial release of `opencode-data-model` — an OpenCode plugin for generating
