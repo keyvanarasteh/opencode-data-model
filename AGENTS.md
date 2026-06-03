@@ -2,7 +2,7 @@
 
 ## Build & Test Commands
 
-- **Build**: `mise run build` or `bun build ./src/index.ts --outdir dist --target bun`
+- **Build**: `mise run build`
 - **Test**: `mise run test` or `bun test`
 - **Single Test**: `bun test BackgroundTask.test.ts` (use file glob pattern)
 - **Watch Mode**: `bun test --watch`
@@ -62,4 +62,5 @@
 
 - **Type**: ES Module package for OpenCode plugin system
 - **Target**: Bun runtime, ES2021+
-- **Purpose**: Background task execution and lifecycle management
+- **Purpose**: Data model generation commands and tools for OpenCode
+- **Primary surfaces**: OpenCode slash commands, command menu entries, and custom tools

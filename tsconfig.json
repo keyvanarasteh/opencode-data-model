@@ -4,10 +4,12 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "rootDir": "src",
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "types": ["bun-types"]
-  }
+  },
+  "include": ["src/**/*.ts"]
 }

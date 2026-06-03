@@ -3,6 +3,7 @@
 #MISE sources=["src/**/*"]
 #MISE outputs=["dist/index.js", "dist/index.js.map", "dist/vendor.js"]
 
+rm -rf dist
 bun build ./src/index.ts \
   --outdir dist \
   --target bun \
@@ -10,3 +11,7 @@ bun build ./src/index.ts \
   --splitting \
   --entry-naming='[dir]/[name].js' \
   --chunk-naming='[name].js'
+tsc --declaration --emitDeclarationOnly --outDir dist --noEmit false
+find dist -name '*.test.d.ts' -delete
+mkdir -p dist/command
+cp src/command/*.md dist/command/

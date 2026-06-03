@@ -1,12 +1,15 @@
 {
-  "name": "data-model-command",
+  "name": "opencode-data-model",
   "version": "0.1.0",
-  "description": "Data Model Generator Command",
+  "description": "OpenCode plugin for generating data model documentation, database schemas, and TypeScript or JavaScript models",
   "author": {
     "name": "Keyvan Arasteh",
     "email": "keyvan.arasteh@live.com"
   },
+  "license": "MIT",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -15,15 +18,24 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/keyvanarasteh/opencode-data-model-command"
+    "url": "git+https://github.com/keyvanarasteh/opencode-data-model.git"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
   "files": [
-    "dist",
-    "src/version.ts"
+    "dist"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "data-model",
+    "schema",
+    "mysql",
+    "postgresql",
+    "typescript",
+    "javascript"
   ],
   "dependencies": {
     "@opencode-ai/plugin": "1.0.85"
