@@ -1,0 +1,19 @@
+{
+  "productId": "opencode-data-model",
+  "type": "plugin",
+  "displayName": "OpenCode Data Model",
+  "description": "Generate normalized, high-performance database schemas and compile-safe TypeScript or JavaScript data models. Adds a strong prompt contract, forced validation, and optional AI double-checking to catch hallucinated fields, missing relations, weak indexes, dialect errors, and type drift before they reach your codebase.",
+  "repoUrl": "https://github.com/keyvanarasteh/opencode-data-model",
+  "homepageUrl": "https://qline.tech",
+  "tags": [
+    "data-model",
+    "schema",
+    "database",
+    "mysql",
+    "postgresql",
+    "typescript",
+    "javascript",
+    "validation"
+  ],
+  "installation": "## Installation\n\nAdd the package to the `plugin` array in your OpenCode config. npm plugins are installed automatically with Bun at startup.\n\n```json\n{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"plugin\": [\"opencode-data-model\"]\n}\n```\n\nThe same package works under npm or Bun (`bun add opencode-data-model`).\n\n## Commands\n\n| Command | Tool | Purpose |\n| --- | --- | --- |\n| `/model` | `model_doc` | Data model blueprint |\n| `/schema-mysql` | `schema_mysql` | MySQL schema |\n| `/schema-pg` | `schema_pg` | PostgreSQL schema |\n| `/types-ts` | `types_ts` | TypeScript models |\n| `/types-js` | `types_js` | JSDoc-annotated JS models |\n| `/data-model-roadmap` | `roadmap_model` | Quality roadmap |\n| `/model-check` | `audit_model` | Validation gate |\n\nClassic `/data-model-*` commands and `generate_*` tool names remain available for compatibility."
+}
