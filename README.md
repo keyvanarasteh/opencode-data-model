@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/cover.png" alt="opencode-data-model" width="100%" />
+</p>
+
 # opencode-data-model
 
 [![PR checks](https://github.com/keyvanarasteh/opencode-data-model/actions/workflows/pr.yml/badge.svg)](https://github.com/keyvanarasteh/opencode-data-model/actions/workflows/pr.yml)
@@ -19,6 +23,14 @@ model reaches your codebase.
 
 ## Install
 
+OpenCode loads plugins from two sources.
+
+### From npm (recommended)
+
+Add the package to the `plugin` array in your config file. OpenCode installs npm
+plugins automatically with Bun at startup and caches them (and their
+dependencies) under `~/.cache/opencode/node_modules/`.
+
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
@@ -26,7 +38,36 @@ model reaches your codebase.
 }
 ```
 
-Bun users can install the same npm package with `bun add opencode-data-model`.
+Both regular and scoped npm packages are supported. The same package works under
+npm or Bun — `bun add opencode-data-model` resolves the identical artifact.
+
+### From local files
+
+Drop the built JavaScript/TypeScript file into a plugin directory and OpenCode
+loads it automatically at startup:
+
+- `.opencode/plugins/` — project-level plugins
+- `~/.config/opencode/plugins/` — global plugins
+
+```bash
+mise run build
+mise run link   # symlinks dist/index.js into ~/.config/opencode/plugins/
+```
+
+To use external packages from a local plugin, create a `package.json` inside your
+config directory, or publish to npm and reference it from config instead.
+
+### Load order
+
+Plugins load from all sources, and every hook runs in sequence:
+
+1. Global config (`~/.config/opencode/opencode.json`)
+2. Project config (`opencode.json`)
+3. Global plugin directory (`~/.config/opencode/plugins/`)
+4. Project plugin directory (`.opencode/plugins/`)
+
+Duplicate npm packages with the same name and version load once. A local plugin
+and an npm plugin with similar names load separately.
 
 ## Objects
 
