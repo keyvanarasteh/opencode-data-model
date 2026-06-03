@@ -26,6 +26,8 @@ model reaches your codebase.
 }
 ```
 
+Bun users can install the same npm package with `bun add opencode-data-model`.
+
 ## Objects
 
 | Object | Command | Tool |
