@@ -1,0 +1,56 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`DataModelCommandPlugin snapshots a TypeScript generation contract with forced validation and AI review 1`] = `
+"# Data Model Generation Contract
+
+Target: TypeScript interfaces and types
+Project: Workspace access
+Naming convention: preserve domain names; use idiomatic code names
+Normalization level: standard
+Examples: Include examples.
+
+## Supplied Context
+
+Users create projects and assign owner permissions.
+
+## Quality Bar
+
+- Define interfaces, discriminated unions, literal types, branded IDs, and utility types as needed.
+- Separate domain models, persistence rows, create/update DTOs, API responses, and UI view models.
+- Represent nullability, optionality, readonly fields, dates, decimals, and enums explicitly.
+- Add concise mapping notes between generated types and database/service concepts.
+
+## Required Work
+
+1. Identify actors, entities, value objects, lifecycle states, and business events.
+2. Infer relationships, cardinality, ownership, invariants, and deletion behavior.
+3. Separate canonical write models from read models, DTOs, and UI view state.
+4. Generate the requested artifact with explicit assumptions.
+5. Include validation rules, indexes, constraints, naming notes, and review checks.
+
+## Output Rules
+
+- Produce the final artifact, not only a plan.
+- Prefer normalized structures unless denormalization is justified.
+- Use deterministic, consistent names.
+- Flag ambiguity instead of silently choosing risky semantics.
+- Keep explanations concise and implementation-oriented.
+
+## Validation Gate
+
+Validation mode: forced. Do not finalize until all required checks pass.
+
+Required checks:
+- Assumptions: List assumptions and open questions that affect the model.
+- Generated Artifacts: Include a non-empty generated schema, type block, model, or documentation artifact.
+- Relationships: Describe relationships, cardinality, ownership, and data flow.
+- Constraints: State database constraints, object constraints, or validation rules explicitly.
+- Implementation Notes: Add implementation notes for migration, integration, or edge cases.
+- Review Checklist: Finish with a checklist for reviewer validation.
+
+Target-specific checks:
+- Type declarations
+- DTO or view model boundary
+
+AI double-check: enabled. After the structural pass, run a second independent reviewer pass and list residual risks."
+`;

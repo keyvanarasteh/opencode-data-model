@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Run tests and update Bun snapshots"
+bun test --update-snapshots

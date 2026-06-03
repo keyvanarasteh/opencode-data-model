@@ -28,6 +28,7 @@ schemas, and TypeScript or JavaScript model definitions from project context.
 | `/data-model-typescript` | TypeScript interfaces, DTOs, and UI data structures |
 | `/data-model-javascript` | JavaScript object shapes with JSDoc typedefs |
 | `/data-model-roadmap` | Data model generator implementation roadmap |
+| `/data-model-validate` | Forced validation report with optional AI double-check |
 
 ## Tools
 
@@ -37,6 +38,7 @@ schemas, and TypeScript or JavaScript model definitions from project context.
 - `generate_typescript_types`
 - `generate_javascript_types`
 - `create_data_model_roadmap`
+- `validate_data_model_output`
 
 ## Development
 
@@ -48,6 +50,9 @@ mise run lint
 mise run test
 mise run typecheck
 ```
+
+Validation uses Bun snapshots, Zod contract checks, SQL DDL parsing, and TypeScript
+syntax checks. Update snapshots with `mise run test:update`.
 
 Local OpenCode link:
 

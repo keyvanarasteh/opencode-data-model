@@ -1,9 +1,21 @@
 import type { Plugin } from '@opencode-ai/plugin';
 import { tool } from '@opencode-ai/plugin';
 
-type GenerationTarget = 'complete' | 'mysql' | 'postgresql' | 'typescript' | 'javascript';
+const generationTargetValues = [
+  'complete',
+  'mysql',
+  'postgresql',
+  'typescript',
+  'javascript',
+] as const;
+const normalizationValues = ['standard', 'strict'] as const;
+const validationModeValues = ['forced', 'advisory', 'off'] as const;
 
-type NormalizationLevel = 'standard' | 'strict';
+type GenerationTarget = (typeof generationTargetValues)[number];
+type NormalizationLevel = (typeof normalizationValues)[number];
+type ValidationMode = (typeof validationModeValues)[number];
+
+type ValidationStatus = 'pass' | 'fail';
 
 interface CommandDefinition {
   name: string;
@@ -21,6 +33,23 @@ interface GenerationBriefOptions {
   namingConvention?: string;
   normalization?: NormalizationLevel;
   includeExamples?: boolean;
+  validationMode?: ValidationMode;
+  aiDoubleCheck?: boolean;
+}
+
+interface ValidationCheck {
+  label: string;
+  status: ValidationStatus;
+  detail: string;
+}
+
+interface ValidationReport {
+  target: GenerationTarget;
+  status: ValidationStatus;
+  checks: ValidationCheck[];
+  targetChecks: ValidationCheck[];
+  aiDoubleCheck: boolean;
+  summary: string;
 }
 
 const targetLabels: Record<GenerationTarget, string> = {
@@ -64,6 +93,77 @@ const targetRubrics: Record<GenerationTarget, string[]> = {
   ],
 };
 
+const requiredValidationSignals: Array<{
+  label: string;
+  patterns: RegExp[];
+  detail: string;
+}> = [
+  {
+    label: 'Assumptions',
+    patterns: [/assumptions?/i],
+    detail: 'List assumptions and open questions that affect the model.',
+  },
+  {
+    label: 'Generated Artifacts',
+    patterns: [
+      /generated (artifact|artifacts|model|schema|types|output)/i,
+      /create table/i,
+      /interface\s+\w+/i,
+      /@typedef/i,
+    ],
+    detail: 'Include a non-empty generated schema, type block, model, or documentation artifact.',
+  },
+  {
+    label: 'Relationships',
+    patterns: [/relationships?/i, /foreign key/i, /references/i, /data flow/i],
+    detail: 'Describe relationships, cardinality, ownership, and data flow.',
+  },
+  {
+    label: 'Constraints',
+    patterns: [/constraints?/i, /not null/i, /unique/i, /check\s*\(/i, /validation rules?/i],
+    detail: 'State database constraints, object constraints, or validation rules explicitly.',
+  },
+  {
+    label: 'Implementation Notes',
+    patterns: [/implementation notes?/i, /migration notes?/i, /developer notes?/i],
+    detail: 'Add implementation notes for migration, integration, or edge cases.',
+  },
+  {
+    label: 'Review Checklist',
+    patterns: [/review checklist/i, /validation checklist/i],
+    detail: 'Finish with a checklist for reviewer validation.',
+  },
+];
+
+const targetValidationSignals: Record<
+  GenerationTarget,
+  Array<{ label: string; pattern: RegExp }>
+> = {
+  complete: [
+    { label: 'Database layer', pattern: /database|table|schema/i },
+    { label: 'Service layer', pattern: /service|dto|domain/i },
+    { label: 'UI layer', pattern: /ui|component|props|state/i },
+  ],
+  mysql: [
+    { label: 'MySQL DDL', pattern: /create table/i },
+    { label: 'Primary key', pattern: /primary key/i },
+    { label: 'Relationship constraint', pattern: /foreign key|references/i },
+  ],
+  postgresql: [
+    { label: 'PostgreSQL DDL', pattern: /create table/i },
+    { label: 'Primary key', pattern: /primary key/i },
+    { label: 'Relationship constraint', pattern: /foreign key|references/i },
+  ],
+  typescript: [
+    { label: 'Type declarations', pattern: /\b(interface|type)\s+\w+/i },
+    { label: 'DTO or view model boundary', pattern: /dto|viewmodel|view model|props/i },
+  ],
+  javascript: [
+    { label: 'JSDoc types', pattern: /@typedef|@property/i },
+    { label: 'Plain object examples', pattern: /const\s+\w+\s*=\s*\{|example/i },
+  ],
+};
+
 const commands: CommandDefinition[] = [
   {
     name: 'data-model',
@@ -95,6 +195,11 @@ const commands: CommandDefinition[] = [
     description: 'Create a quality roadmap for a data model generation effort',
     template: roadmapTemplate(),
   },
+  {
+    name: 'data-model-validate',
+    description: 'Validate a generated data model artifact against required quality gates',
+    template: validationTemplate(),
+  },
 ];
 
 function commandTemplate(target: GenerationTarget): string {
@@ -119,12 +224,16 @@ Required response structure:
 6. Implementation notes
 7. Review checklist
 
+Forced validation gate:
+${validationGateText(target, 'forced', false)}
+
 Rules:
 - Prefer normalized models and explicit relationships.
 - Preserve domain language from the supplied context.
 - Name every assumption that changes the generated structure.
 - Do not invent unrelated products, actors, or workflows.
 - Ask a clarifying question only when the missing answer would materially change the model.
+- If the validation gate fails, revise the artifact before giving the final answer.
 `.trim();
 }
 
@@ -150,6 +259,23 @@ Required response structure:
 `.trim();
 }
 
+function validationTemplate(): string {
+  return `
+Validate a generated data model artifact from the current context.
+
+Use the validate_data_model_output tool when available. Report pass/fail status for:
+- Assumptions
+- Generated artifacts
+- Relationships
+- Constraints
+- Implementation notes
+- Review checklist
+
+If the user asks for an AI double-check, run a second independent reviewer pass after
+the structural validation and list any remaining risks.
+`.trim();
+}
+
 function buildGenerationBrief(options: GenerationBriefOptions): string {
   const project = options.projectName?.trim() || 'unspecified project';
   const naming =
@@ -157,6 +283,8 @@ function buildGenerationBrief(options: GenerationBriefOptions): string {
   const normalization = options.normalization ?? 'standard';
   const examples =
     options.includeExamples === false ? 'No examples requested.' : 'Include examples.';
+  const validationMode = options.validationMode ?? 'forced';
+  const aiDoubleCheck = options.aiDoubleCheck === true;
   const rubric = targetRubrics[options.target].map((item) => `- ${item}`).join('\n');
 
   return `
@@ -191,6 +319,10 @@ ${rubric}
 - Use deterministic, consistent names.
 - Flag ambiguity instead of silently choosing risky semantics.
 - Keep explanations concise and implementation-oriented.
+
+## Validation Gate
+
+${validationGateText(options.target, validationMode, aiDoubleCheck)}
 `.trim();
 }
 
@@ -223,6 +355,108 @@ ${context.trim()}
 `.trim();
 }
 
+function validationGateText(
+  target: GenerationTarget,
+  validationMode: ValidationMode,
+  aiDoubleCheck: boolean
+): string {
+  if (validationMode === 'off') {
+    return 'Validation mode: off. Still keep assumptions and review risks visible.';
+  }
+
+  const modeText =
+    validationMode === 'forced'
+      ? 'Validation mode: forced. Do not finalize until all required checks pass.'
+      : 'Validation mode: advisory. Report failures and recommended fixes.';
+  const required = requiredValidationSignals
+    .map((check) => `- ${check.label}: ${check.detail}`)
+    .join('\n');
+  const targetChecks = targetValidationSignals[target]
+    .map((check) => `- ${check.label}`)
+    .join('\n');
+  const aiReview = aiDoubleCheck
+    ? 'AI double-check: enabled. After the structural pass, run a second independent reviewer pass and list residual risks.'
+    : 'AI double-check: optional. Run it when the user asks for double-checking or when ambiguity remains.';
+
+  return `
+${modeText}
+
+Required checks:
+${required}
+
+Target-specific checks:
+${targetChecks}
+
+${aiReview}
+`.trim();
+}
+
+function runChecks(
+  artifact: string,
+  checks: Array<{ label: string; patterns?: RegExp[]; pattern?: RegExp; detail?: string }>
+): ValidationCheck[] {
+  return checks.map((check) => {
+    const patterns = check.patterns ?? (check.pattern ? [check.pattern] : []);
+    const passed = patterns.some((pattern) => pattern.test(artifact));
+
+    return {
+      label: check.label,
+      status: passed ? 'pass' : 'fail',
+      detail: passed ? 'Signal found.' : (check.detail ?? 'Required signal was not found.'),
+    };
+  });
+}
+
+export function validateDataModelArtifact(input: {
+  artifact: string;
+  target: GenerationTarget;
+  aiDoubleCheck?: boolean;
+}): ValidationReport {
+  const checks = runChecks(input.artifact, requiredValidationSignals);
+  const targetChecks = runChecks(input.artifact, targetValidationSignals[input.target]);
+  const failed = [...checks, ...targetChecks].filter((check) => check.status === 'fail');
+  const status: ValidationStatus = failed.length === 0 ? 'pass' : 'fail';
+
+  return {
+    target: input.target,
+    status,
+    checks,
+    targetChecks,
+    aiDoubleCheck: input.aiDoubleCheck === true,
+    summary:
+      status === 'pass'
+        ? 'All required validation signals were found.'
+        : `${failed.length} validation check(s) failed. Revise the artifact before finalizing.`,
+  };
+}
+
+export function formatValidationReport(report: ValidationReport): string {
+  const formatCheck = (check: ValidationCheck) =>
+    `- [${check.status === 'pass' ? 'x' : ' '}] ${check.label}: ${check.detail}`;
+
+  return `
+# Data Model Validation Report
+
+Target: ${targetLabels[report.target]}
+Status: ${report.status.toUpperCase()}
+AI double-check: ${report.aiDoubleCheck ? 'enabled' : 'not requested'}
+
+## Required Components
+
+${report.checks.map(formatCheck).join('\n')}
+
+## Target Checks
+
+${report.targetChecks.map(formatCheck).join('\n')}
+
+## Result
+
+${report.summary}
+
+${report.aiDoubleCheck ? 'Run a second independent AI reviewer pass before final acceptance.' : 'AI double-check can be requested for an additional reviewer pass.'}
+`.trim();
+}
+
 function generationArgs() {
   return {
     context: tool.schema
@@ -238,13 +472,21 @@ function generationArgs() {
       .optional()
       .describe('Optional naming preference such as snake_case, camelCase, or domain-first names.'),
     normalization: tool.schema
-      .enum(['standard', 'strict'] as const)
+      .enum(normalizationValues)
       .optional()
       .describe('How aggressively to normalize relational schemas.'),
     includeExamples: tool.schema
       .boolean()
       .optional()
       .describe('Whether to include examples, sample payloads, or sample queries.'),
+    validationMode: tool.schema
+      .enum(validationModeValues)
+      .optional()
+      .describe('Validation strictness for the final output. Defaults to forced.'),
+    aiDoubleCheck: tool.schema
+      .boolean()
+      .optional()
+      .describe('Request a second independent AI reviewer pass after structural validation.'),
   };
 }
 
@@ -298,6 +540,26 @@ export const DataModelCommandPlugin: Plugin = async () => {
         },
         async execute(args) {
           return buildRoadmapBrief(args.context, args.projectName);
+        },
+      }),
+      validate_data_model_output: tool({
+        description:
+          'Validate a generated data model artifact for required sections, relationships, constraints, and target-specific signals.',
+        args: {
+          artifact: tool.schema
+            .string()
+            .min(1)
+            .describe('Generated markdown, SQL, TypeScript, or JavaScript artifact to validate.'),
+          target: tool.schema
+            .enum(generationTargetValues)
+            .describe('Artifact target to validate against.'),
+          aiDoubleCheck: tool.schema
+            .boolean()
+            .optional()
+            .describe('Include a second-pass AI reviewer requirement in the validation report.'),
+        },
+        async execute(args) {
+          return formatValidationReport(validateDataModelArtifact(args));
         },
       }),
     },
